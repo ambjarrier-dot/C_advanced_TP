@@ -1,0 +1,86 @@
+#include <opencv2/opencv.hpp>
+#include <iostream>
+#include "listeFiltres.h"
+#include <vector>
+
+using namespace std;
+using namespace cv;
+
+int main()
+{
+    vector<filtre *> listV;
+
+    listV.push_back(new rouge());  //0
+    listV.push_back(new bleu());   //1
+    listV.push_back(new gris());   //2
+    listV.push_back(new laplacian()); //3
+    listV.push_back(new contraste()); //4
+    listV.push_back(new sobel());   //5
+    listV.push_back(new seuil());   //6
+    listV.push_back(new centreInertie());   //7
+    listV.push_back(new axesInertie());   //8
+    listV.push_back(new hough());   //9
+    listV.push_back(new forme());   //10
+
+
+    VideoCapture cap("conveyorKapla4.mp4");
+
+    if (!cap.isOpened()) {
+        cout << "Error opening video stream or file" << endl;
+        return -1;
+    }
+
+    int index = 6;
+    int index1 = 9;
+    int index2 = 7;
+    Mat frameIn; // Déclarée une seule fois ici
+
+    while (1)
+    {
+        // 1. Capture de la frame
+        cap >> frameIn;
+
+        // 2. GESTION DE LA BOUCLE
+        if (frameIn.empty())
+        {
+            // On remet le curseur de la vidéo à la frame 0
+            cap.set(CAP_PROP_POS_FRAMES, 0);
+            
+            // On recommence la boucle pour lire la première frame immédiatement
+            continue; 
+        }
+
+        // 3. Traitement sur la zone d'intérêt (ROI)
+        // Utilise .clone() si tu as encore des problèmes de hachage visuel
+        Mat imgPart = frameIn(Range(175, 323), Range(173, 629));
+        
+        if (index < listV.size()) {
+            //listV[index]->traitement(&imgPart);
+            listV[index1]->traitement(&imgPart);
+            //listV[index2]->traitement(&imgPart);
+        }
+        
+        // 4. Affichage
+        imshow("Frame", imgPart);
+
+        // 5. Sortie et contrôles
+        char c = (char)waitKey(1);
+        
+        // Touche ESC pour quitter proprement
+        if (c == 27) {
+            break;
+        }
+        // Changement de filtre (touches 0 à 9)
+        else if (c >= '0' && c <= '9') {
+            int newIndex = c - '0'; // Plus propre que c - 48
+            if (newIndex < listV.size()) {
+                index = newIndex;
+            }
+        }
+    }
+
+    cap.release();
+    destroyAllWindows();
+
+    return 0;
+}
