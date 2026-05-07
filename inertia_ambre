@@ -1,0 +1,40 @@
+#include "inertia.h"
+
+inertia::inertia() { Name = "inertia"; }
+inertia::~inertia() {}
+
+void inertia::traitement(Mat * f) {
+    // Conversion en gris pour les moments
+    Mat gray;
+    cvtColor(*f, gray, COLOR_BGR2GRAY);
+
+    // Calcul des moments
+    Moments m = moments(gray, false);
+    if (m.m00 == 0) return;
+
+    // Centre d'inertie
+    int cx = (int)(m.m10 / m.m00);
+    int cy = (int)(m.m01 / m.m00);
+
+    // Calcul de l'angle de l'axe d'inertie principal
+    double angle = 0.5 * atan2(2 * m.mu11, m.mu20 - m.mu02);
+
+    // Longueur des axes
+    int len = 100;
+    Point center(cx, cy);
+
+    // Axe principal
+    Point p1(cx + len * cos(angle), cy + len * sin(angle));
+    Point p2(cx - len * cos(angle), cy - len * sin(angle));
+
+    // Axe secondaire (perpendiculaire)
+    Point p3(cx + len * cos(angle + CV_PI/2), cy + len * sin(angle + CV_PI/2));
+    Point p4(cx - len * cos(angle + CV_PI/2), cy - len * sin(angle + CV_PI/2));
+
+    // Dessin
+    circle(*f, center, 5, Scalar(0, 0, 255), -1);       // centre en rouge
+    line(*f, p1, p2, Scalar(0, 255, 0), 2);              // axe principal en vert
+    line(*f, p3, p4, Scalar(255, 0, 0), 2);              // axe secondaire en bleu
+}
+
+string inertia::getterName() { return Name; }
