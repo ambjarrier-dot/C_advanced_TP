@@ -1,0 +1,63 @@
+#include "axesInertie.h"
+#include <vector>
+#include <cmath>
+
+using namespace cv;
+using namespace std;
+
+axesInertie::axesInertie() {
+    Name = "axesInertie";
+}
+
+void axesInertie::traitement(Mat * f) {
+    if (f->empty()) return;
+
+    Mat gray;
+    if (f->channels() == 3) cvtColor(*f, gray, COLOR_BGR2GRAY);
+    else gray = *f;
+
+    vector<vector<Point>> contours;
+    findContours(gray, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+    double maxArea = 0;
+    int idx = -1;
+    for (int i = 0; i < contours.size(); i++) {
+        double area = contourArea(contours[i]);
+        if (area > maxArea) { maxArea = area; idx = i; }
+    }
+
+    if (idx != -1 && maxArea > 500) {
+        Moments mu = moments(contours[idx]);
+        
+        // 1. Centre d'inertie
+        Point2f center(mu.m10 / mu.m00, mu.m01 / mu.m00);
+
+        // 2. Calcul de l'angle d'orientation (en radians)
+        double theta = 0.5 * atan2(2 * mu.mu11, mu.mu20 - mu.mu02);
+
+        // 3. Calcul des longueurs des axes (approximatif basé sur les moments)
+        // On définit une longueur arbitraire pour la visualisation ou proportionnelle à l'objet
+        double longueur = 100; 
+        double largeur = 40;
+
+        // 4. Calcul des points d'extrémité des axes
+        // Axe principal (Major axis)
+        Point p1(center.x + cos(theta) * longueur, center.y + sin(theta) * longueur);
+        Point p2(center.x - cos(theta) * longueur, center.y - sin(theta) * longueur);
+        
+        // Axe secondaire (Minor axis - perpendiculaire)
+        Point p3(center.x + cos(theta + M_PI/2) * largeur, center.y + sin(theta + M_PI/2) * largeur);
+        Point p4(center.x - cos(theta + M_PI/2) * largeur, center.y - sin(theta + M_PI/2) * largeur);
+
+        // 5. Dessin des axes
+        line(*f, p1, p2, Scalar(255, 0, 0), 2); // Bleu : Axe principal
+        line(*f, p3, p4, Scalar(0, 255, 255), 2); // Jaune : Axe secondaire
+        circle(*f, center, 5, Scalar(0, 0, 255), -1); // Point rouge au centre
+
+        // 6. Affichage de l'angle en degrés
+        string angleTxt = to_string((int)(theta * 180 / M_PI)) + " deg";
+        putText(*f, angleTxt, Point(center.x + 20, center.y - 20), FONT_HERSHEY_SIMPLEX, 0.6, Scalar(0, 255, 0), 2);
+    }
+}
+
+string axesInertie::getterName() { return Name; }
