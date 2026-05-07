@@ -1,0 +1,57 @@
+#include "centreInertie.h"
+#include <vector>
+
+using namespace cv;
+using namespace std;
+
+centreInertie::centreInertie() {
+    Name = "centreInertie";
+}
+
+void centreInertie::traitement(Mat * f) {
+    if (f->empty()) return;
+
+    Mat gray;
+    // 1. On travaille sur une image en gris
+    if (f->channels() == 3)
+        cvtColor(*f, gray, COLOR_BGR2GRAY);
+    else
+        gray = *f;
+
+    // 2. Détection des contours
+    vector<vector<Point>> contours;
+    findContours(gray, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+    // 3. On cherche le contour le plus grand (le Kapla)
+    double maxArea = 0;
+    int maxAreaIdx = -1;
+    for (int i = 0; i < contours.size(); i++) {
+        double area = contourArea(contours[i]);
+        if (area > maxArea) {
+            maxArea = area;
+            maxAreaIdx = i;
+        }
+    }
+
+    // 4. Si on a trouvé un objet assez gros
+    if (maxAreaIdx != -1 && maxArea > 500) {
+        // Calcul des moments du contour
+        Moments mu = moments(contours[maxAreaIdx]);
+
+        // Calcul du centre (x = M10/M00, y = M01/M00)
+        if (mu.m00 != 0) { // On évite la division par zéro
+            Point2f center(mu.m10 / mu.m00, mu.m01 / mu.m00);
+
+            // 5. Visualisation : On dessine une croix et un cercle au centre
+            circle(*f, center, 5, Scalar(0, 0, 255), -1); // Un point rouge
+            line(*f, Point(center.x - 10, center.y), Point(center.x + 10, center.y), Scalar(0, 255, 0), 2);
+            line(*f, Point(center.x, center.y - 10), Point(center.x, center.y + 10), Scalar(0, 255, 0), 2);
+            
+            // On peut aussi afficher les coordonnées sur l'image
+            string text = "X: " + to_string((int)center.x) + " Y: " + to_string((int)center.y);
+            putText(*f, text, Point(center.x + 15, center.y + 15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
+        }
+    }
+}
+
+string centreInertie::getterName() { return Name; }
